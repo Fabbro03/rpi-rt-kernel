@@ -57,7 +57,6 @@ Pi4-32 Pi400-32 PiCM4-32: clean
 		target=$@ \
 		full=false
 
-----------
 # 64 bits
 Pi3-Full Pi4-Full Pi400-Full PiZero2-Full PiCM3-Full PiCM4-Full: clean
 	$(MAKE) build \
