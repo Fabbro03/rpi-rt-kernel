@@ -61,16 +61,16 @@ RUN [ "$ARCH" = "arm" ] && ./scripts/config --enable CONFIG_SMP || true
 RUN [ "$ARCH" = "arm" ] && ./scripts/config --disable CONFIG_BROKEN_ON_SMP || true
 
 # Enable full preemptible real-time support
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_PREEMPT_RT_FULL
+RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_PREEMPT_RT_FULL; fi
 
 # Enable high-resolution timers for precise timing
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_HIGH_RES_TIMERS
+RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_HIGH_RES_TIMERS; fi
 
 # Set timer frequency to 1000 Hz for finer resolution
-RUN if [FULL = "true" ]; then ./scripts/config --set-val CONFIG_HZ 1000
+RUN if [FULL = "true" ]; then ./scripts/config --set-val CONFIG_HZ 1000; fi
 
 # Force interrupts to run as threads for better preemption
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_IRQ_FORCED_THREADING
+RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_IRQ_FORCED_THREADING; fi
 
 RUN [ "$ARCH" = "arm64" ] && make -j$((`nproc`+1)) Image.gz modules dtbs
 RUN [ "$ARCH" = "arm" ] && make -j$((`nproc`+1)) zImage modules dtbs || true
