@@ -1,0 +1,85 @@
+name: Build and Release for Raspberry Pi
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger only on new tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [Pi3, Pi3-Full]  # List your target devices here
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Restore Docker cache
+        id: cache-docker-layers
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.docker
+          key: ${{ runner.os }}-docker-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-${{ matrix.target }}-
+
+      - name: Run Makefile for ${{ matrix.target }}
+        env:
+          DOCKER_BUILDKIT: 1  # Enables buildkit for caching
+        run: |
+          echo "Running make for target: ${{ matrix.target }}"
+          make ${{ matrix.target }}
+
+      - name: Archive Build Artifacts for ${{ matrix.target }}
+        run: |
+          mkdir -p release_builds/${{ matrix.target }}
+          cp -r build/* release_builds/${{ matrix.target }}/
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.target }}
+          path: release_builds/${{ matrix.target }}
+
+      # Save Docker cache after the build
+      - name: Save updated Docker cache
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.docker
+          key: ${{ runner.os }}-docker-${{ matrix.target }}-${{ github.sha }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download All Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: release_builds
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release_builds
+          asset_name: release_builds
+          asset_content_type: application/zip
