@@ -1,3 +1,6 @@
+# NOT PRODUCTION READY - I DON'T RECOMMEND TO USE THIS REPOS AND RELATIVES RELEASES
+
+
 # Introduction
 
 Raspbian lite with fully preemptive real-time kernel. This repo follows the official methodology to cross compile the kernel as explained here `https://www.raspberrypi.com/documentation/computers/linux_kernel.html`.
