@@ -72,7 +72,7 @@ RUN if [FULL = "true" ]; then ./scripts/config --set-val CONFIG_HZ 1000; fi
 # Force interrupts to run as threads for better preemption
 RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_IRQ_FORCED_THREADING; fi
 
-RUN [ "$ARCH" = "arm64" ] && make -j$((`nproc`+1)) Image.gz modules dtbs
+RUN [ "$ARCH" = "arm64" ] && make -j$((`nproc`+1)) Image.gz modules dtbs || true
 RUN [ "$ARCH" = "arm" ] && make -j$((`nproc`+1)) zImage modules dtbs || true
 
 RUN echo "using raspberry pi image ${RASPIOS}"
