@@ -33,7 +33,7 @@ jobs:
           DOCKER_BUILDKIT: 1  # Enables buildkit for caching
         run: |
           echo "Running make for target: ${{ matrix.target }}"
-          make ${{ matrix.target }}
+          sudo make ${{ matrix.target }}
 
       - name: Archive Build Artifacts for ${{ matrix.target }}
         run: |
