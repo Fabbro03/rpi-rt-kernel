@@ -1,134 +1,185 @@
-.PHONY: all custom
+SHELL := /bin/bash
 
-# Default build for Pi5
-all: clean Pi5
+Pi3 Pi3+ Pi4 Pi400 PiZero2 PiCM3 PiCM3+ PiCM4 PiCM4S: prepare download_image64 download_kernel_src bcm2711-64_build install_kernel64
 
-# 64 bits
-Pi3 Pi4 Pi400 PiZero2 PiCM3 PiCM4: clean
-	$(MAKE) build \
-		raspios=raspios_lite_arm64 \
-		defconfig=bcm2711_defconfig \
-		kernel=kernel8 \
-		arch=arm64 \
-		compiler=aarch64-linux-gnu- \
-		target=$@ \
-		full=false
+Pi5: prepare download_image64 download_kernel_src bcm2712-64_build install_kernel64
 
-Pi5: clean
-	$(MAKE) build \
-		raspios=raspios_lite_arm64 \
-		defconfig=bcm2712_defconfig \
-		kernel=kernel_2712 \
-		arch=arm64 \
-		compiler=aarch64-linux-gnu- \
-		target=$@ \
-		full=false
+Pi2 Pi3-32 Pi3+-32 PiZero2-32 PiCM3-32 PiCM3+-32: prepare download_image32 download_kernel_src bcm2709-32_build install_kernel32
 
-# 32 bits
-Pi1 PiZero PiCM1: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcmrpi_defconfig \
-		kernel=kernel \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=false
+Pi4-32 Pi400-32 PiCM4-32 PiCM4S-32: prepare download_image32 download_kernel_src bcm2711-32_build install_kernel32
 
-Pi2: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcm2709_defconfig \
-		kernel=kernel7 \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=false
+Pi1 PiCM1 PiZero: prepare download_image32 download_kernel_src bcmrpi-32_build install_kernel32
 
-Pi3-32 PiCM3-32 PiZero2-32: clean Pi2
+prepare:
+	echo "Installing/updating required packages" && \
+	apt-get -qq update && \
+	apt-get -qq --yes install bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64 crossbuild-essential-armhf && \
+	echo "Installation/update success"	
 
-Pi4-32 Pi400-32 PiCM4-32: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcm2711_defconfig \
-		kernel=kernel7l \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=false
+download_image64:
+	export RASPIOS=raspios_lite_arm64 && \
+	export DATE=$(curl -s https://downloads.raspberrypi.org/${RASPIOS}/images/ | sed -n "s:.*${RASPIOS}-\(.*\)/</a>.*:\1:p" | tail -1) && \
+    export RASPIOS_IMAGE_NAME=$(curl -s https://downloads.raspberrypi.org/${RASPIOS}/images/${RASPIOS}-${DATE}/ | sed -n "s:.*<a href=\"\(.*\).xz\">.*:\1:p" | head -n 1) && \
+    echo "Downloading ${RASPIOS_IMAGE_NAME}.xz" && \
+    curl https://downloads.raspberrypi.org/${RASPIOS}/images/${RASPIOS}-${DATE}/${RASPIOS_IMAGE_NAME}.xz --output ${RASPIOS}.xz && \
+    xz -d ${RASPIOS}.xz && \
+	echo "${RASPIOS_IMAGE_NAME}.xz downloaded and extracted"
 
-# 64 bits
-Pi3-Full Pi4-Full Pi400-Full PiZero2-Full PiCM3-Full PiCM4-Full: clean
-	$(MAKE) build \
-		raspios=raspios_lite_arm64 \
-		defconfig=bcm2711_defconfig \
-		kernel=kernel8 \
-		arch=arm64 \
-		compiler=aarch64-linux-gnu- \
-		target=$@ \
-		full=true
+download_image32:
+	export RASPIOS=raspios_lite_armhf
+	export DATE=$(curl -s https://downloads.raspberrypi.org/${RASPIOS}/images/ | sed -n "s:.*${RASPIOS}-\(.*\)/</a>.*:\1:p" | tail -1) && \
+    export RASPIOS_IMAGE_NAME=$(curl -s https://downloads.raspberrypi.org/${RASPIOS}/images/${RASPIOS}-${DATE}/ | sed -n "s:.*<a href=\"\(.*\).xz\">.*:\1:p" | head -n 1) && \
+    echo "Downloading ${RASPIOS_IMAGE_NAME}.xz" && \
+    curl https://downloads.raspberrypi.org/${RASPIOS}/images/${RASPIOS}-${DATE}/${RASPIOS_IMAGE_NAME}.xz --output ${RASPIOS}.xz && \
+    xz -d ${RASPIOS}.xz && \
+	echo "${RASPIOS_IMAGE_NAME}.xz downloaded and extracted"
 
-Pi5-Full: clean
-	$(MAKE) build \
-		raspios=raspios_lite_arm64 \
-		defconfig=bcm2712_defconfig \
-		kernel=kernel_2712 \
-		arch=arm64 \
-		compiler=aarch64-linux-gnu- \
-		target=$@ \
-		full=true
+download_kernel_src:
+	export RPI_KERNEL_VERSION=6.6 && \
+	export RPI_KERNEL_BRANCH=stable_20240529 && \
+	export LINUX_KERNEL_RT_PATCH=patch-6.6.31-rt31 && \
+	echo "Downloading kernel source code" && \
+	git clone --depth=1 --branch $(RPI_KERNEL_BRANCH) https://github.com/raspberrypi/linux && \
+	echo "Kernel downloaded" && \
+	echo "RT patch downloading" && \
+	curl https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/${LINUX_KERNEL_VERSION}/older/${LINUX_KERNEL_RT_PATCH}.patch.gz --output linux\${PATCH}.patch.gz && \
+	echo "RT patch downloaded" && \
+	echo "Applying patch" && \
+	cd linux/ && \
+    gzip -cd /linux/${PATCH}.patch.gz | patch -p1 --verbose && \
+	echo "Patch applied" && \
+	cd ..
 
-# 32 bits
-Pi1-Full PiZero-Full PiCM1-Full: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcmrpi_defconfig \
-		kernel=kernel \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=true
+bcm2711-64_build:
+	cd linux && \
+	export KERNEL=kernel8 && \
+	make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig && \
+	./scripts/config --disable CONFIG_VIRTUALIZATION && \
+	./scripts/config --enable CONFIG_PREEMPT_RT && \
+	./scripts/config --disable CONFIG_RCU_EXPERT && \
+	./scripts/config --enable CONFIG_RCU_BOOST && \
+	./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500 && \
+	./scripts/config --enable CONFIG_PREEMPT_RT_FULL && \
+	./scripts/config --enable CONFIG_HIGH_RES_TIMERS && \
+	./scripts/config --set-val CONFIG_HZ 1000 && \
+	./scripts/config --enable CONFIG_IRQ_FORCED_THREADING && \
+	./scripts/config --set-str CONFIG_LOCALVERSION "-Fabbro03-FullRT" && \
+	make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs && \
+	cd ..
 
-Pi2-Full: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcm2709_defconfig \
-		kernel=kernel7 \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=true
+bcm2712-64_build:
+	cd linux && \
+	export KERNEL=kernel_2712 && \
+	make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig && \
+	./scripts/config --disable CONFIG_VIRTUALIZATION && \
+	./scripts/config --enable CONFIG_PREEMPT_RT && \
+	./scripts/config --disable CONFIG_RCU_EXPERT && \
+	./scripts/config --enable CONFIG_RCU_BOOST && \
+	./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500 && \
+	./scripts/config --enable CONFIG_PREEMPT_RT_FULL && \
+	./scripts/config --enable CONFIG_HIGH_RES_TIMERS && \
+	./scripts/config --set-val CONFIG_HZ 1000 && \
+	./scripts/config --enable CONFIG_IRQ_FORCED_THREADING && \
+	./scripts/config --set-str CONFIG_LOCALVERSION "-Fabbro03-FullRT" && \
+	make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs && \
+	cd ..
 
-Pi3-32-Full PiCM3-32-Full PiZero2-32-Full: clean Pi2-Full
+# 32 bit
+bcmrpi-32_build:
+	cd linux && \
+	export KERNEL=kernel && \
+    make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- bcmrpi_defconfig && \
+	./scripts/config --disable CONFIG_VIRTUALIZATION && \
+	./scripts/config --enable CONFIG_PREEMPT_RT && \
+	./scripts/config --disable CONFIG_RCU_EXPERT && \
+	./scripts/config --enable CONFIG_RCU_BOOST && \
+	./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500 && \
+	./scripts/config --enable CONFIG_PREEMPT_RT_FULL && \
+	./scripts/config --enable CONFIG_HIGH_RES_TIMERS && \
+	./scripts/config --set-val CONFIG_HZ 1000 && \
+	./scripts/config --enable CONFIG_IRQ_FORCED_THREADING && \
+	./scripts/config --enable CONFIG_SMP && \
+	./scripts/config --disable CONFIG_BROKEN_ON_SMP && \
+	./scripts/config --set-str CONFIG_LOCALVERSION "-Fabbro03-FullRT" && \
+	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs && \
+	cd ..
 
-Pi4-32-Full Pi400-32-Full PiCM4-32-Full: clean
-	$(MAKE) build \
-		raspios=raspios_lite_armhf \
-		defconfig=bcm2711_defconfig \
-		kernel=kernel7l \
-		arch=arm \
-		compiler=arm-linux-gnueabihf- \
-		target=$@ \
-		full=true
+bcm2709-32_build:
+	cd linux && \
+	export KERNEL=kernel7 && \
+    make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- bcm2709_defconfig && \
+	./scripts/config --disable CONFIG_VIRTUALIZATION && \
+	./scripts/config --enable CONFIG_PREEMPT_RT && \
+	./scripts/config --disable CONFIG_RCU_EXPERT && \
+	./scripts/config --enable CONFIG_RCU_BOOST && \
+	./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500 && \
+	./scripts/config --enable CONFIG_PREEMPT_RT_FULL && \
+	./scripts/config --enable CONFIG_HIGH_RES_TIMERS && \
+	./scripts/config --set-val CONFIG_HZ 1000 && \
+	./scripts/config --enable CONFIG_IRQ_FORCED_THREADING && \
+	./scripts/config --enable CONFIG_SMP && \
+	./scripts/config --disable CONFIG_BROKEN_ON_SMP && \
+	./scripts/config --set-str CONFIG_LOCALVERSION "-Fabbro03-FullRT" && \
+	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs && \
+	cd ..
 
-build:
-	mkdir -p build
-	docker build \
-		--build-arg RASPIOS=$(raspios) \
-		--build-arg DEFCONFIG=$(defconfig) \
-		--build-arg KERNEL=$(kernel) \
-		--build-arg ARCH=$(arch) \
-		--build-arg CROSS_COMPILE=$(compiler) \
-		--build-arg TARGET=$(target) \
-		--build-arg FULL=$(full) \
-		-t rpi-rt-linux .
-	docker rm tmp-rpi-rt-linux || true
-	docker run --privileged --name tmp-rpi-rt-linux rpi-rt-linux /raspios/build.sh
-	docker cp tmp-rpi-rt-linux:/raspios/build/ ./
-	docker rm tmp-rpi-rt-linux
+bcm2711-32_build:
+	cd linux && \
+	export KERNEL=kernel7l && \
+    make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- bcm2711_defconfig && \
+	./scripts/config --disable CONFIG_VIRTUALIZATION && \
+	./scripts/config --enable CONFIG_PREEMPT_RT && \
+	./scripts/config --disable CONFIG_RCU_EXPERT && \
+	./scripts/config --enable CONFIG_RCU_BOOST && \
+	./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500 && \
+	./scripts/config --enable CONFIG_PREEMPT_RT_FULL && \
+	./scripts/config --enable CONFIG_HIGH_RES_TIMERS && \
+	./scripts/config --set-val CONFIG_HZ 1000 && \
+	./scripts/config --enable CONFIG_IRQ_FORCED_THREADING && \
+	./scripts/config --enable CONFIG_SMP && \
+	./scripts/config --disable CONFIG_BROKEN_ON_SMP && \
+	./scripts/config --set-str CONFIG_LOCALVERSION "-Fabbro03-FullRT" && \
+	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs && \
+	cd ..
 
-custom:
-	docker run --rm --privileged -it rpi-rt-linux bash
+install_kernel64:
+	OUTPUT=$(sfdisk -lJ ${RASPIOS}) && \
+	BOOT_START=$(echo $OUTPUT | jq -r '.partitiontable.partitions[0].start') && \
+	BOOT_SIZE=$(echo $OUTPUT | jq -r '.partitiontable.partitions[0].size') && \
+	EXT4_START=$(echo $OUTPUT | jq -r '.partitiontable.partitions[1].start') && \
+	mkdir mnt && \
+	mkdir mnt/boot && \
+	mkdir mnt/root && \
+	mount -t ext4 -o loop,offset=$(($EXT4_START*512)) ${RASPIOS} mnt/root && \
+	mount -t vfat -o loop,offset=$(($BOOT_START*512)),sizelimit=$(($BOOT_SIZE*512)) ${RASPIOS} mnt/boot && \
+	env PATH=${PATH} make -j6 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=mnt/root modules_install && \
+	cp mnt/boot/${KERNEL}.img mnt/boot/${KERNEL}-backup.img && \
+	cp arch/arm64/boot/Image mnt/boot/${KERNEL}.img && \
+	cp arch/arm64/boot/dts/broadcom/*.dtb mnt/boot/ && \
+	cp arch/arm64/boot/dts/overlays/*.dtb* mnt/boot/overlays/ && \
+	cp arch/arm64/boot/dts/overlays/README mnt/boot/overlays/ && \
+	umount mnt/boot && \
+	umount mnt/root && \
+	mkdir build && \
+	zip build/${RASPIOS}-${TARGET}.zip ${RASPIOS}
 
-clean:
-	rm -fr build
+install_kernel32:
+	OUTPUT=$(sfdisk -lJ ${RASPIOS}) && \
+	BOOT_START=$(echo $OUTPUT | jq -r '.partitiontable.partitions[0].start') && \
+	BOOT_SIZE=$(echo $OUTPUT | jq -r '.partitiontable.partitions[0].size') && \
+	EXT4_START=$(echo $OUTPUT | jq -r '.partitiontable.partitions[1].start') && \
+	mkdir mnt && \
+	mkdir mnt/boot && \
+	mkdir mnt/root && \
+	mount -t ext4 -o loop,offset=$(($EXT4_START*512)) ${RASPIOS} mnt/root && \
+	mount -t vfat -o loop,offset=$(($BOOT_START*512)),sizelimit=$(($BOOT_SIZE*512)) ${RASPIOS} mnt/boot && \
+	sudo env PATH=$PATH make -j12 ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=mnt/root modules_install && \
+	cp mnt/boot/$KERNEL.img mnt/boot/$KERNEL-backup.img && \
+	cp arch/arm/boot/zImage mnt/boot/$KERNEL.img && \
+	cp arch/arm/boot/dts/broadcom/*.dtb mnt/boot/ && \
+	cp arch/arm/boot/dts/overlays/*.dtb* mnt/boot/overlays/ && \
+	cp arch/arm/boot/dts/overlays/README mnt/boot/overlays/ && \
+	umount mnt/boot && \
+	umount mnt/root && \
+	mkdir build && \
+	zip build/${RASPIOS}-${TARGET}.zip ${RASPIOS}

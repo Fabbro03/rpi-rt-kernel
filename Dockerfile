@@ -55,25 +55,25 @@ RUN ./scripts/config --enable CONFIG_RCU_BOOST
 RUN ./scripts/config --set-val CONFIG_RCU_BOOST_DELAY 500
 
 # Enable symmetric multiprocessing for ARM
-RUN [ "$ARCH" = "arm" ] && ./scripts/config --enable CONFIG_SMP || true
+RUN if [ "$ARCH" = "arm" ]; then ./scripts/config --enable CONFIG_SMP; fi
 
 # Disable features known to have issues on SMP for ARM
-RUN [ "$ARCH" = "arm" ] && ./scripts/config --disable CONFIG_BROKEN_ON_SMP || true
+RUN if [ "$ARCH" = "arm" ]; then ./scripts/config --disable CONFIG_BROKEN_ON_SMP; fi
 
 # Enable full preemptible real-time support
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_PREEMPT_RT_FULL; fi
+RUN if ["$FULL" = "true" ]; then ./scripts/config --enable CONFIG_PREEMPT_RT_FULL; fi
 
 # Enable high-resolution timers for precise timing
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_HIGH_RES_TIMERS; fi
+RUN if ["$FULL" = "true" ]; then ./scripts/config --enable CONFIG_HIGH_RES_TIMERS; fi
 
 # Set timer frequency to 1000 Hz for finer resolution
-RUN if [FULL = "true" ]; then ./scripts/config --set-val CONFIG_HZ 1000; fi
+RUN if ["$FULL" = "true" ]; then ./scripts/config --set-val CONFIG_HZ 1000; fi
 
 # Force interrupts to run as threads for better preemption
-RUN if [FULL = "true" ]; then ./scripts/config --enable CONFIG_IRQ_FORCED_THREADING; fi
+RUN if ["$FULL" = "true" ]; then ./scripts/config --enable CONFIG_IRQ_FORCED_THREADING; fi
 
-RUN [ "$ARCH" = "arm64" ] && make -j$((`nproc`+1)) Image.gz modules dtbs || true
-RUN [ "$ARCH" = "arm" ] && make -j$((`nproc`+1)) zImage modules dtbs || true
+RUN if [ "$ARCH" = "arm64" ]; then make -j$((`nproc`+1)) Image.gz modules dtbs; fi
+RUN if [ "$ARCH" = "arm" ]; then make -j$((`nproc`+1)) zImage modules dtbs; fi
 
 RUN echo "using raspberry pi image ${RASPIOS}"
 WORKDIR /raspios
